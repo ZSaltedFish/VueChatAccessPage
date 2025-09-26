@@ -88,3 +88,7 @@ npm run preview
 ```
 
 欢迎根据业务需求继续扩展界面与后端能力。
+
+## 部署指南
+
+部署到 Linux 服务器的详细步骤（包含 Docker Compose 编排、环境变量说明等）请参考 [deploy/README.md](deploy/README.md)。

@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    environment:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4.1-mini}"
+      PORT: "3000"
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    depends_on:
+      - server
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
