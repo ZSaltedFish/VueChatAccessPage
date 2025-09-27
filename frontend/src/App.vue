@@ -40,10 +40,10 @@ async function handleSubmit() {
   responsePayload.value = null;
 
   const formData = new FormData();
-  formData.append('text', message.value);
+  formData.append('message', message.value);
 
   if (imageFile.value) {
-    formData.append('image', imageFile.value);
+    formData.append('images', imageFile.value);
   }
 
   try {
