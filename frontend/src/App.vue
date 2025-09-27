@@ -110,13 +110,13 @@ async function handleSubmit() {
 
         <div class="chat-form__actions">
           <button class="chat-form__submit" type="submit" :disabled="isSending">
-            {{ isSending ? '发送中…' : '发送' }}
+            {{ isSending ? '请稍等…' : '发送' }}
           </button>
         </div>
       </form>
 
       <p v-if="errorMessage" class="feedback feedback--error">{{ errorMessage }}</p>
-      <p v-else-if="isSending" class="feedback feedback--status">正在发送，请稍候…</p>
+      <p v-else-if="isSending" class="feedback feedback--status">请稍等…</p>
 
       <section v-if="responsePayload" class="response-panel">
         <h2>后端响应</h2>
