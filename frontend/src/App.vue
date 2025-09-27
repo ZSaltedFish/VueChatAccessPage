@@ -9,18 +9,44 @@ const responsePayload = ref(null);
 const errorMessage = ref('');
 
 const formattedResponse = computed(() => {
-  if (!responsePayload.value) {
+  const payload = responsePayload.value;
+
+  if (!payload) {
     return '';
   }
 
-  if (typeof responsePayload.value === 'string') {
-    return responsePayload.value;
+  if (typeof payload === 'string') {
+    return payload;
+  }
+
+  const directText = payload.result?.output_text;
+  if (directText) {
+    return directText;
+  }
+
+  const fallbackText = payload.result?.output?.[0]?.content?.[0]?.text;
+  if (fallbackText) {
+    return fallbackText;
   }
 
   try {
-    return JSON.stringify(responsePayload.value, null, 2);
+    return JSON.stringify(payload, null, 2);
   } catch (error) {
-    return String(responsePayload.value);
+    return String(payload);
+  }
+});
+
+const debugPayload = computed(() => {
+  const payload = responsePayload.value;
+
+  if (!payload || typeof payload === 'string') {
+    return '';
+  }
+
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch (error) {
+    return String(payload);
   }
 });
 
@@ -57,15 +83,19 @@ async function handleSubmit() {
       throw new Error(details || `请求失败：${response.status}`);
     }
 
-    const rawPayload = await response.text();
-    if (!rawPayload) {
-      responsePayload.value = '请求成功，但未返回正文。';
-    } else {
-      try {
-        responsePayload.value = JSON.parse(rawPayload);
-      } catch {
-        responsePayload.value = rawPayload;
+    try {
+      const payload = await response.json();
+      if (
+        payload === null ||
+        payload === undefined ||
+        (typeof payload === 'string' && payload.trim() === '')
+      ) {
+        responsePayload.value = '请求成功，但未返回正文。';
+      } else {
+        responsePayload.value = payload;
       }
+    } catch {
+      responsePayload.value = '响应不是有效的 JSON。';
     }
     message.value = '';
     imageFile.value = null;
@@ -120,7 +150,11 @@ async function handleSubmit() {
 
       <section v-if="responsePayload" class="response-panel">
         <h2>后端响应</h2>
-        <pre>{{ formattedResponse }}</pre>
+        <p v-if="formattedResponse" class="response-panel__text">{{ formattedResponse }}</p>
+        <details v-if="debugPayload" class="response-panel__debug">
+          <summary>调试信息</summary>
+          <pre>{{ debugPayload }}</pre>
+        </details>
       </section>
     </section>
   </main>
@@ -232,13 +266,31 @@ async function handleSubmit() {
 .response-panel {
   border-top: 1px solid #e2e8f0;
   padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.response-panel pre {
-  background: #0f172a;
-  color: #f8fafc;
-  padding: 1rem;
-  border-radius: 12px;
+.response-panel__text {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.response-panel__debug {
+  font-size: 0.875rem;
+}
+
+.response-panel__debug summary {
+  cursor: pointer;
+  color: #475569;
+}
+
+.response-panel__debug pre {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #f1f5f9;
+  border-radius: 8px;
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 320px;
