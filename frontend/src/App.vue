@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const message = ref('');
 const mode = ref('text');
@@ -126,8 +126,27 @@ const imagePreview = computed(() => {
   return `data:${mimeType};base64,${base64Image}`;
 });
 
+watch(
+  mode,
+  (currentMode) => {
+    if (currentMode === 'image' && imageFile.value) {
+      imageFile.value = null;
+      fileInputKey.value += 1;
+    }
+  }
+);
+
 async function handleSubmit() {
-  if (!message.value && !imageFile.value) {
+  const trimmedMessage = message.value.trim();
+  const hasMessage = trimmedMessage.length > 0;
+  const hasImage = Boolean(imageFile.value);
+
+  if (mode.value === 'image') {
+    if (!hasMessage) {
+      errorMessage.value = '请在图片生成模式下输入提示词。';
+      return;
+    }
+  } else if (!hasMessage && !hasImage) {
     errorMessage.value = '请填写消息或上传一张图像。';
     return;
   }
@@ -211,16 +230,18 @@ async function handleSubmit() {
           :disabled="isSending"
         ></textarea>
 
-        <label class="chat-form__label" for="image-upload">上传图像（可选）</label>
-        <input
-          :key="fileInputKey"
-          id="image-upload"
-          class="chat-form__file"
-          type="file"
-          accept="image/*"
-          @change="handleFileChange"
-          :disabled="isSending"
-        />
+        <template v-if="mode === 'text'">
+          <label class="chat-form__label" for="image-upload">上传图像（可选）</label>
+          <input
+            :key="fileInputKey"
+            id="image-upload"
+            class="chat-form__file"
+            type="file"
+            accept="image/*"
+            @change="handleFileChange"
+            :disabled="isSending"
+          />
+        </template>
 
         <div class="chat-form__actions">
           <button class="chat-form__submit" type="submit" :disabled="isSending">
