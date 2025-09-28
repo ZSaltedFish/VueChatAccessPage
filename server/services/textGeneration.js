@@ -35,9 +35,6 @@ async function generateText({ message, files = [], model }) {
           content,
         },
       ],
-      extra_headers: {
-        'OpenAI-Beta': 'assistants=v1',
-      },
     });
 
     return { result: response };

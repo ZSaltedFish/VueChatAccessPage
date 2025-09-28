@@ -8,7 +8,6 @@ async function generateImage({ prompt, size = '1024x1024' }) {
       prompt,
       size,
       n: 1,
-      response_format: 'b64_json',
     });
 
     const imageResult = Array.isArray(response.data) ? response.data[0] : null;

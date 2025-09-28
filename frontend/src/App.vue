@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 const message = ref('');
-const mode = ref('text');
+const mode = ref('image');
 const imageFile = ref(null);
 const fileInputKey = ref(0);
 const isSending = ref(false);
@@ -203,15 +203,15 @@ async function handleSubmit() {
   <main class="app-shell">
     <section class="card">
       <header class="card__header">
-        <h1>智能对话演示</h1>
-        <p>输入文字并可选上传一张图像，向后端接口 <code>/api/message</code> 发送请求。</p>
+        <h1>智能生成图片</h1>
+        <p>给出图片生成描述，生成一张图片</p>
       </header>
 
       <form class="chat-form" @submit.prevent="handleSubmit">
         <fieldset class="chat-form__mode" :disabled="isSending">
           <legend class="chat-form__label">生成模式</legend>
-          <label class="chat-form__radio">
-            <input type="radio" name="mode" value="text" v-model="mode" />
+          <label class="chat-form__radio chat-form__radio--disabled" title="目前仅支持生成图片">
+            <input type="radio" name="mode" value="text" v-model="mode" disabled />
             生成文本
           </label>
           <label class="chat-form__radio">
@@ -409,3 +409,11 @@ async function handleSubmit() {
   }
 }
 </style>
+
+.chat-form__radio--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.chat-form__radio--disabled input {
+  cursor: not-allowed;
+}
