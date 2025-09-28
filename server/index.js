@@ -35,8 +35,18 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
       return res.status(500).json({ error: { message: 'Server is missing OpenAI credentials.' } });
     }
 
-    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
-    const mode = typeof req.body.mode === 'string' ? req.body.mode.trim() : 'text';
+    const body = req.body ?? {};
+    const hasMessageField = Object.prototype.hasOwnProperty.call(body, 'message');
+    const hasModeField = Object.prototype.hasOwnProperty.call(body, 'mode');
+
+    if (!hasMessageField && !hasModeField) {
+      return res
+        .status(400)
+        .json({ error: { message: 'invalid or unparsable multipart payload' } });
+    }
+
+    const message = typeof body?.message === 'string' ? body.message.trim() : '';
+    const mode = typeof body?.mode === 'string' ? body.mode.trim() : 'text';
     const files = Array.isArray(req.files) ? req.files : [];
 
     if (!message && files.length === 0) {

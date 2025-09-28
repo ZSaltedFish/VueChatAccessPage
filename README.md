@@ -61,6 +61,21 @@ npm run start
 
 服务默认监听 `http://localhost:3000`，与前端代理配置保持一致。启动后即可通过前端或其他客户端向 `/api/message` 发送 multipart/form-data 请求进行测试。
 
+### 回归验证：异常 multipart 请求
+
+为避免未来回归导致服务在遇到损坏的 multipart 负载时抛出未处理异常，可使用以下步骤进行手动验证：
+
+1. 确保服务已启动并监听 `http://localhost:3000`。
+2. 运行下面的命令向接口发送一个缺失必要字段的损坏 multipart 请求（故意省略 `message` 与 `mode` 字段，并提供不完整的 boundary）：
+
+   ```bash
+   curl -i -X POST http://localhost:3000/api/message \
+     -H "Content-Type: multipart/form-data; boundary=boundary-test" \
+     --data-binary $'--boundary-test\r\nContent-Disposition: form-data; name="foo"\r\n\r\nbar\r\n--boundary-test'
+   ```
+
+3. 期望响应状态码为 `400`，并返回 JSON `{ "error": { "message": "invalid or unparsable multipart payload" } }`，表明服务正确处理异常负载而不会崩溃。
+
 ### 构建生产包
 
 ```bash
