@@ -157,6 +157,7 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'assistants=v1',
       },
       body: JSON.stringify(body),
     });
