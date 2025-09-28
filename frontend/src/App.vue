@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 const message = ref('');
+const mode = ref('text');
 const imageFile = ref(null);
 const fileInputKey = ref(0);
 const isSending = ref(false);
@@ -55,6 +56,28 @@ function handleFileChange(event) {
   imageFile.value = file ?? null;
 }
 
+const imagePreview = computed(() => {
+  const payload = responsePayload.value;
+
+  if (!payload || typeof payload !== 'object') {
+    return '';
+  }
+
+  const base64Image =
+    payload.image?.b64_json ||
+    payload.image?.base64 ||
+    payload.result?.data?.[0]?.b64_json ||
+    payload.result?.output?.[0]?.content?.find?.((item) => item.type === 'output_image')?.image_base64;
+
+  if (!base64Image) {
+    return '';
+  }
+
+  const mimeType = payload.image?.mime_type || 'image/png';
+
+  return `data:${mimeType};base64,${base64Image}`;
+});
+
 async function handleSubmit() {
   if (!message.value && !imageFile.value) {
     errorMessage.value = '请填写消息或上传一张图像。';
@@ -67,6 +90,7 @@ async function handleSubmit() {
 
   const formData = new FormData();
   formData.append('message', message.value);
+  formData.append('mode', mode.value);
 
   if (imageFile.value) {
     formData.append('images', imageFile.value);
@@ -117,6 +141,18 @@ async function handleSubmit() {
       </header>
 
       <form class="chat-form" @submit.prevent="handleSubmit">
+        <fieldset class="chat-form__mode" :disabled="isSending">
+          <legend class="chat-form__label">生成模式</legend>
+          <label class="chat-form__radio">
+            <input type="radio" name="mode" value="text" v-model="mode" />
+            生成文本
+          </label>
+          <label class="chat-form__radio">
+            <input type="radio" name="mode" value="image" v-model="mode" />
+            生成图片
+          </label>
+        </fieldset>
+
         <label class="chat-form__label" for="message">对话内容</label>
         <textarea
           id="message"
@@ -150,6 +186,7 @@ async function handleSubmit() {
 
       <section v-if="responsePayload" class="response-panel">
         <h2>后端响应</h2>
+        <img v-if="imagePreview" class="response-panel__image" :src="imagePreview" alt="AI 生成图像预览" />
         <p v-if="formattedResponse" class="response-panel__text">{{ formattedResponse }}</p>
         <details v-if="debugPayload" class="response-panel__debug">
           <summary>调试信息</summary>

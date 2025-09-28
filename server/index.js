@@ -31,10 +31,56 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
     }
 
     const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    const mode = typeof req.body.mode === 'string' ? req.body.mode.trim() : 'text';
     const files = Array.isArray(req.files) ? req.files : [];
 
     if (!message && files.length === 0) {
       return res.status(400).json({ error: { message: 'Either message text or an image is required.' } });
+    }
+
+    if (mode === 'image') {
+      if (!message) {
+        return res.status(400).json({ error: { message: 'Image generation requires a text prompt.' } });
+      }
+
+      const imageBody = {
+        model: 'gpt-image-1',
+        prompt: message,
+        size: '1024x1024',
+        response_format: 'b64_json',
+      };
+
+      const response = await fetch('https://api.openai.com/v1/images', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify(imageBody),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('OpenAI API error:', data);
+        return res.status(response.status).json({
+          error: {
+            message: data.error?.message || 'Failed to process request.',
+          },
+        });
+      }
+
+      const imageResult = Array.isArray(data.data) ? data.data[0] : null;
+
+      return res.json({
+        result: data,
+        image: imageResult
+          ? {
+              b64_json: imageResult.b64_json,
+              mime_type: imageResult.mime_type || 'image/png',
+            }
+          : null,
+      });
     }
 
     const content = [];
