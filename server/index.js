@@ -8,6 +8,9 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 
+const { generateImage } = require('./services/imageGeneration');
+const { generateText } = require('./services/textGeneration');
+
 const app = express();
 
 app.use(morgan('combined'));
@@ -19,38 +22,6 @@ const upload = multer({
     files: 5,
   },
 });
-
-function normaliseOpenAIError(parsedBody, rawBody, fallbackMessage = 'Failed to process request.') {
-  if (parsedBody?.error?.message) {
-    return parsedBody.error.message;
-  }
-
-  if (typeof rawBody === 'string' && rawBody.trim()) {
-    const trimmed = rawBody.trim();
-
-    if (trimmed.startsWith('<')) {
-      return 'OpenAI API returned an unexpected HTML response. Please try again later.';
-    }
-
-    return trimmed.length > 500 ? `${trimmed.slice(0, 500)}…` : trimmed;
-  }
-
-  return fallbackMessage;
-}
-
-async function readResponseBody(response) {
-  const rawBody = await response.text();
-
-  if (!rawBody) {
-    return { parsed: null, raw: '' };
-  }
-
-  try {
-    return { parsed: JSON.parse(rawBody), raw: rawBody };
-  } catch (error) {
-    return { parsed: null, raw: rawBody };
-  }
-}
 
 app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
   try {
@@ -75,116 +46,17 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
         return res.status(400).json({ error: { message: 'Image generation requires a text prompt.' } });
       }
 
-      const imageBody = {
-        model: 'gpt-image-1',
-        prompt: message,
-        size: '1024x1024',
-        response_format: 'b64_json',
-      };
-
-      const response = await fetch('https://api.openai.com/v1/images', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify(imageBody),
-      });
-
-      const { parsed, raw } = await readResponseBody(response);
-
-      if (!response.ok) {
-        console.error('OpenAI API error:', parsed ?? raw);
-        return res.status(response.status).json({
-          error: {
-            message: normaliseOpenAIError(parsed, raw),
-          },
-        });
-      }
-
-      if (!parsed) {
-        console.error('OpenAI API did not return JSON for image request:', raw);
-        return res.status(502).json({
-          error: {
-            message: 'OpenAI API returned an unreadable response while generating the image. Please try again later.',
-          },
-        });
-      }
-
-      const imageResult = Array.isArray(parsed.data) ? parsed.data[0] : null;
-
-      return res.json({
-        result: parsed,
-        image: imageResult
-          ? {
-              b64_json: imageResult.b64_json,
-              mime_type: imageResult.mime_type || 'image/png',
-            }
-          : null,
-      });
+      const imageResponse = await generateImage({ prompt: message, size: '1024x1024' });
+      return res.json(imageResponse);
     }
 
-    const content = [];
-
-    if (message) {
-      content.push({ type: 'input_text', text: message });
-    }
-
-    files.forEach((file) => {
-      if (!file.mimetype.startsWith('image/')) {
-        throw Object.assign(new Error('Only image uploads are supported.'), { status: 400 });
-      }
-
-      const base64 = file.buffer.toString('base64');
-      content.push({
-        type: 'input_image',
-        image_url: `data:${file.mimetype};base64,${base64}`,
-      });
-    });
-
-    const body = {
+    const textResponse = await generateText({
+      message,
+      files,
       model: OPENAI_MODEL,
-      input: [
-        {
-          role: 'user',
-          content,
-        },
-      ],
-    };
-
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'OpenAI-Beta': 'assistants=v1',
-      },
-      body: JSON.stringify(body),
     });
 
-    const { parsed, raw } = await readResponseBody(response);
-
-    if (!response.ok) {
-      console.error('OpenAI API error:', parsed ?? raw);
-      return res.status(response.status).json({
-        error: {
-          message: normaliseOpenAIError(parsed, raw),
-        },
-      });
-    }
-
-    if (!parsed) {
-      console.error('OpenAI API did not return JSON for text request:', raw);
-      return res.status(502).json({
-        error: {
-          message: 'OpenAI API returned an unreadable response while processing the request. Please try again later.',
-        },
-      });
-    }
-
-    res.json({
-      result: parsed,
-    });
+    res.json(textResponse);
   } catch (error) {
     next(error);
   }
