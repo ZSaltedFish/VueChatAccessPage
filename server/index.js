@@ -20,6 +20,38 @@ const upload = multer({
   },
 });
 
+function normaliseOpenAIError(parsedBody, rawBody, fallbackMessage = 'Failed to process request.') {
+  if (parsedBody?.error?.message) {
+    return parsedBody.error.message;
+  }
+
+  if (typeof rawBody === 'string' && rawBody.trim()) {
+    const trimmed = rawBody.trim();
+
+    if (trimmed.startsWith('<')) {
+      return 'OpenAI API returned an unexpected HTML response. Please try again later.';
+    }
+
+    return trimmed.length > 500 ? `${trimmed.slice(0, 500)}…` : trimmed;
+  }
+
+  return fallbackMessage;
+}
+
+async function readResponseBody(response) {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return { parsed: null, raw: '' };
+  }
+
+  try {
+    return { parsed: JSON.parse(rawBody), raw: rawBody };
+  } catch (error) {
+    return { parsed: null, raw: rawBody };
+  }
+}
+
 app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
   try {
     if (!req.is('multipart/form-data')) {
@@ -59,21 +91,30 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
         body: JSON.stringify(imageBody),
       });
 
-      const data = await response.json();
+      const { parsed, raw } = await readResponseBody(response);
 
       if (!response.ok) {
-        console.error('OpenAI API error:', data);
+        console.error('OpenAI API error:', parsed ?? raw);
         return res.status(response.status).json({
           error: {
-            message: data.error?.message || 'Failed to process request.',
+            message: normaliseOpenAIError(parsed, raw),
           },
         });
       }
 
-      const imageResult = Array.isArray(data.data) ? data.data[0] : null;
+      if (!parsed) {
+        console.error('OpenAI API did not return JSON for image request:', raw);
+        return res.status(502).json({
+          error: {
+            message: 'OpenAI API returned an unreadable response while generating the image. Please try again later.',
+          },
+        });
+      }
+
+      const imageResult = Array.isArray(parsed.data) ? parsed.data[0] : null;
 
       return res.json({
-        result: data,
+        result: parsed,
         image: imageResult
           ? {
               b64_json: imageResult.b64_json,
@@ -120,19 +161,28 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const { parsed, raw } = await readResponseBody(response);
 
     if (!response.ok) {
-      console.error('OpenAI API error:', data);
+      console.error('OpenAI API error:', parsed ?? raw);
       return res.status(response.status).json({
         error: {
-          message: data.error?.message || 'Failed to process request.',
+          message: normaliseOpenAIError(parsed, raw),
+        },
+      });
+    }
+
+    if (!parsed) {
+      console.error('OpenAI API did not return JSON for text request:', raw);
+      return res.status(502).json({
+        error: {
+          message: 'OpenAI API returned an unreadable response while processing the request. Please try again later.',
         },
       });
     }
 
     res.json({
-      result: data,
+      result: parsed,
     });
   } catch (error) {
     next(error);
