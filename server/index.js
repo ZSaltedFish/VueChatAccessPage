@@ -18,6 +18,8 @@ app.use(morgan('combined'));
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
+    fieldNameSize: 100,
+    fieldSize: 64 * 1024, // 64KB per text field
     fileSize: 10 * 1024 * 1024, // 10MB per file
     files: 5,
   },
@@ -67,6 +69,24 @@ app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err);
   }
+
+  if (err instanceof multer.MulterError) {
+    const payloadLimitCodes = new Set([
+      'LIMIT_FIELD_VALUE',
+      'LIMIT_FIELD_KEY',
+      'LIMIT_FIELD_COUNT',
+      'LIMIT_PART_COUNT',
+    ]);
+
+    if (payloadLimitCodes.has(err.code)) {
+      return res.status(413).json({
+        error: {
+          message: 'Multipart payload exceeds allowed size limits.',
+        },
+      });
+    }
+  }
+
   const status = err.status || 500;
   res.status(status).json({
     error: {
