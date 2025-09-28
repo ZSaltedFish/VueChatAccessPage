@@ -25,6 +25,30 @@ const formattedResponse = computed(() => {
     return directText;
   }
 
+  const outputItems = Array.isArray(payload.result?.output) ? payload.result.output : [];
+  const textSegments = [];
+
+  for (const item of outputItems) {
+    const contentEntries = Array.isArray(item?.content) ? item.content : [];
+
+    for (const entry of contentEntries) {
+      if (entry?.type === 'output_text') {
+        const textValue = entry.text?.value ?? entry.text;
+        if (textValue) {
+          textSegments.push(textValue);
+        }
+      }
+    }
+  }
+
+  if (textSegments.length === 1) {
+    return textSegments[0];
+  }
+
+  if (textSegments.length > 1) {
+    return textSegments.join('\n');
+  }
+
   const fallbackText = payload.result?.output?.[0]?.content?.[0]?.text;
   if (fallbackText) {
     return fallbackText;
@@ -63,11 +87,35 @@ const imagePreview = computed(() => {
     return '';
   }
 
+  const outputItems = Array.isArray(payload.result?.output) ? payload.result.output : [];
+  let outputImageBase64 = '';
+
+  for (const item of outputItems) {
+    const contentEntries = Array.isArray(item?.content) ? item.content : [];
+
+    for (const entry of contentEntries) {
+      if (entry?.type === 'output_image') {
+        outputImageBase64 =
+          entry.image_base64 ||
+          entry.image?.base64 ||
+          entry.image?.b64_json ||
+          '';
+        if (outputImageBase64) {
+          break;
+        }
+      }
+    }
+
+    if (outputImageBase64) {
+      break;
+    }
+  }
+
   const base64Image =
     payload.image?.b64_json ||
     payload.image?.base64 ||
     payload.result?.data?.[0]?.b64_json ||
-    payload.result?.output?.[0]?.content?.find?.((item) => item.type === 'output_image')?.image_base64;
+    outputImageBase64;
 
   if (!base64Image) {
     return '';
