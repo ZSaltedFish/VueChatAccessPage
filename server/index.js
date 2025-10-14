@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+const GOOGLE_GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
 
 const { generateImage } = require('./services/imageGeneration');
 const { generateText } = require('./services/textGeneration');
