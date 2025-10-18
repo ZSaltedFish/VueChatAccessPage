@@ -8,7 +8,8 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const GOOGLE_GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-const NEWS_API_KEY = process.env.NEWS_API_KEY;
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'real-time-news-data.p.rapidapi.com';
 
 const { generateImage } = require('./services/imageGeneration');
 const { generateText } = require('./services/textGeneration');
@@ -56,7 +57,8 @@ app.post('/api/message', upload.array('images', 5), async (req, res, next) => {
       try {
         const newsResponse = await searchNews({
           query: message,
-          apiKey: NEWS_API_KEY,
+          apiKey: RAPIDAPI_KEY,
+          apiHost: RAPIDAPI_HOST,
           pageSize: 6,
         });
 

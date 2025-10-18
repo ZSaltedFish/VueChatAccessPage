@@ -16,7 +16,7 @@ deploy/
 ## 前置条件
 
 1. 已在服务器上安装 [Docker](https://docs.docker.com/engine/install/) 与 [Docker Compose V2](https://docs.docker.com/compose/install/)。
-2. 拥有可用的 [NewsAPI](https://newsapi.org/) Key（用于新闻检索）以及 OpenAI API Key（若需启用文本或图片生成功能）。
+2. 拥有可用的 [RapidAPI Real-Time News Data](https://rapidapi.com/letscrape-6bRBa3QguO5/api/real-time-news-data) Key（用于新闻检索）以及 OpenAI API Key（若需启用文本或图片生成功能）。
 
 ## 快速开始
 
@@ -42,7 +42,8 @@ deploy/
    | --- | --- | --- |
    | `OPENAI_API_KEY` | 可选，OpenAI 接口访问凭证 | - |
    | `OPENAI_MODEL` | 可选，后端调用的模型名称 | `gpt-4.1-mini` |
-   | `NEWS_API_KEY` | 必填，NewsAPI.org 接口访问凭证 | - |
+   | `RAPIDAPI_KEY` | 必填，RapidAPI 访问凭证 | - |
+   | `RAPIDAPI_HOST` | 可选，RapidAPI Host Header，默认 `real-time-news-data.p.rapidapi.com` | `real-time-news-data.p.rapidapi.com` |
    | `FRONTEND_PORT` | 可选，映射到宿主机的前端访问端口 | `8080` |
    | `SERVER_PORT` | 可选，映射到宿主机的后端端口 | `3000` |
 
