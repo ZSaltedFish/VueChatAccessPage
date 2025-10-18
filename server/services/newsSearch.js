@@ -32,7 +32,15 @@ function normaliseArticle(article) {
   return { title, description, url, source, publishedAt };
 }
 
-async function searchNews({ query, apiKey, apiHost, pageSize = 5, language = 'zh' }) {
+async function searchNews({
+  query,
+  apiKey,
+  apiHost,
+  pageSize = 5,
+  language = 'en',
+  country = 'US',
+  timePublished = 'anytime',
+}) {
   if (!query || !query.trim()) {
     const error = new Error('新闻检索需要提供查询关键词。');
     error.status = 400;
@@ -59,9 +67,20 @@ async function searchNews({ query, apiKey, apiHost, pageSize = 5, language = 'zh
 
   const params = new URLSearchParams({
     query,
-    language,
     limit: String(pageSize),
   });
+
+  if (language) {
+    params.set('lang', language);
+  }
+
+  if (country) {
+    params.set('country', country);
+  }
+
+  if (timePublished) {
+    params.set('time_published', timePublished);
+  }
 
   const requestUrl = `${RAPID_API_ENDPOINT}?${params.toString()}`;
   const response = await fetch(requestUrl, {
