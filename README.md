@@ -1,6 +1,6 @@
 # VueChatAccessPage
 
-访问 ChatGPT 的简单代理项目，现在包含一个基于 Vue 3 + Vite 的前端界面以及可选的 Node.js 后端服务。
+访问 ChatGPT 的简单代理项目，现在包含一个基于 Vue 3 + Vite 的前端界面以及可选的 Node.js 后端服务。最新版本的界面已经聚焦在“新闻查询”能力：输入关键词即可获取来自主流媒体的新闻摘要列表。
 
 ## 前端（frontend/）
 
@@ -28,7 +28,10 @@ npm run dev
 
 ### 主要功能
 
-* 暴露 `POST /api/message` 接口，接收前端通过 multipart/form-data 发送的文本与图片，并将其转发至目标 GPT 接口（默认 OpenAI Responses API）。
+* 暴露 `POST /api/message` 接口，基于 `mode` 字段动态调用不同的能力：
+  * `news`：查询 `newsapi.org`，并返回最多 6 条与关键词相关的新闻结果。
+  * `text`：转发到 OpenAI Responses API，进行富文本生成（当前前端已关闭该模式）。
+  * `image`：调用 OpenAI 的图片生成功能（当前前端已关闭该模式）。
 * 基于内存存储的上传处理，仅在需要时将图片转换为 base64 后嵌入请求。
 * 提供基础的日志记录与错误处理能力，敏感配置通过环境变量注入。
 * 限制单个文本字段大小不超过 64KB，以避免异常的大字段请求占用内存。
@@ -48,8 +51,9 @@ npm run dev
 在 `server/` 目录下复制 `.env.example` 生成 `.env`，并根据实际情况填写：
 
 ```env
-OPENAI_API_KEY=sk-xxx                 # 必填，OpenAI API Key
+OPENAI_API_KEY=sk-xxx                 # 可选，启用文本/图片生成功能所需的 OpenAI API Key
 OPENAI_MODEL=gpt-4.1-mini             # 可选，默认值见示例
+NEWS_API_KEY=news-api-key             # 必填，NewsAPI.org 的访问密钥
 PORT=3000                             # 可选，服务监听端口
 ```
 

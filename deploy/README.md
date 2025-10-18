@@ -16,7 +16,7 @@ deploy/
 ## 前置条件
 
 1. 已在服务器上安装 [Docker](https://docs.docker.com/engine/install/) 与 [Docker Compose V2](https://docs.docker.com/compose/install/)。
-2. 拥有可用的 OpenAI API Key，并确认该 Key 具备访问所需模型的权限。
+2. 拥有可用的 [NewsAPI](https://newsapi.org/) Key（用于新闻检索）以及 OpenAI API Key（若需启用文本或图片生成功能）。
 
 ## 快速开始
 
@@ -40,8 +40,9 @@ deploy/
 
    | 变量名 | 说明 | 默认值 |
    | --- | --- | --- |
-   | `OPENAI_API_KEY` | 必填，OpenAI 接口访问凭证 | - |
+   | `OPENAI_API_KEY` | 可选，OpenAI 接口访问凭证 | - |
    | `OPENAI_MODEL` | 可选，后端调用的模型名称 | `gpt-4.1-mini` |
+   | `NEWS_API_KEY` | 必填，NewsAPI.org 接口访问凭证 | - |
    | `FRONTEND_PORT` | 可选，映射到宿主机的前端访问端口 | `8080` |
    | `SERVER_PORT` | 可选，映射到宿主机的后端端口 | `3000` |
 
