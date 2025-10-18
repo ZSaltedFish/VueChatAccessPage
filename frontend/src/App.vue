@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 const message = ref('');
-const mode = ref('image');
+const mode = ref('news');
 const imageFile = ref(null);
 const fileInputKey = ref(0);
 const isSending = ref(false);
@@ -13,6 +13,10 @@ const formattedResponse = computed(() => {
   const payload = responsePayload.value;
 
   if (!payload) {
+    return '';
+  }
+
+  if (typeof payload === 'object' && Array.isArray(payload.articles)) {
     return '';
   }
 
@@ -83,7 +87,11 @@ function handleFileChange(event) {
 const imagePreview = computed(() => {
   const payload = responsePayload.value;
 
-  if (!payload || typeof payload !== 'object') {
+  if (
+    !payload ||
+    typeof payload !== 'object' ||
+    (Array.isArray(payload.articles) && payload.articles.length >= 0)
+  ) {
     return '';
   }
 
@@ -126,6 +134,53 @@ const imagePreview = computed(() => {
   return `data:${mimeType};base64,${base64Image}`;
 });
 
+const newsArticles = computed(() => {
+  const payload = responsePayload.value;
+
+  if (!payload || typeof payload !== 'object' || !Array.isArray(payload.articles)) {
+    return [];
+  }
+
+  return payload.articles.map((article, index) => ({
+    id: article.url || `${article.title || 'news'}-${index}`,
+    title: article.title || '未命名新闻',
+    description: article.description || '',
+    url: article.url || '',
+    source: article.source || '',
+    publishedAt: article.publishedAt || '',
+  }));
+});
+
+const newsSummary = computed(() => {
+  const payload = responsePayload.value;
+
+  if (!payload || typeof payload !== 'object' || !Array.isArray(payload.articles)) {
+    return '';
+  }
+
+  if (payload.articles.length === 0) {
+    return '未找到符合条件的新闻。';
+  }
+
+  const visibleCount = newsArticles.value.length;
+  const total = typeof payload.totalResults === 'number' ? payload.totalResults : visibleCount;
+
+  return `为您找到 ${visibleCount} 条相关新闻（共 ${total} 条结果）。`;
+});
+
+function formatNewsDate(timestamp) {
+  if (!timestamp) {
+    return '';
+  }
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
 watch(
   mode,
   (currentMode) => {
@@ -141,7 +196,12 @@ async function handleSubmit() {
   const hasMessage = trimmedMessage.length > 0;
   const hasImage = Boolean(imageFile.value);
 
-  if (mode.value === 'image') {
+  if (mode.value === 'news') {
+    if (!hasMessage) {
+      errorMessage.value = '请输入要查询的新闻关键词。';
+      return;
+    }
+  } else if (mode.value === 'image') {
     if (!hasMessage) {
       errorMessage.value = '请在图片生成模式下输入提示词。';
       return;
@@ -203,60 +263,78 @@ async function handleSubmit() {
   <main class="app-shell">
     <section class="card">
       <header class="card__header">
-        <h1>智能生成图片</h1>
-        <p>给出图片生成描述，生成一张图片</p>
+        <h1>智能新闻查询</h1>
+        <p>输入关键词，获取来自主流媒体的相关新闻摘要</p>
       </header>
 
       <form class="chat-form" @submit.prevent="handleSubmit">
         <fieldset class="chat-form__mode" :disabled="isSending">
-          <legend class="chat-form__label">生成模式</legend>
-          <label class="chat-form__radio chat-form__radio--disabled" title="目前仅支持生成图片">
-            <input type="radio" name="mode" value="text" v-model="mode" disabled />
-            生成文本
-          </label>
+          <legend class="chat-form__label">功能模式</legend>
           <label class="chat-form__radio">
-            <input type="radio" name="mode" value="image" v-model="mode" />
-            生成图片
+            <input type="radio" name="mode" value="news" v-model="mode" />
+            新闻查询
+          </label>
+          <label
+            class="chat-form__radio chat-form__radio--disabled"
+            title="生成文本功能已关闭"
+          >
+            <input type="radio" name="mode" value="text" v-model="mode" disabled />
+            生成文本（已停用）
+          </label>
+          <label
+            class="chat-form__radio chat-form__radio--disabled"
+            title="生成图片功能已关闭"
+          >
+            <input type="radio" name="mode" value="image" v-model="mode" disabled />
+            生成图片（已停用）
           </label>
         </fieldset>
 
-        <label class="chat-form__label" for="message">对话内容</label>
+        <label class="chat-form__label" for="message">查询关键词</label>
         <textarea
           id="message"
           v-model="message"
           class="chat-form__textarea"
-          rows="5"
-          placeholder="请输入要发送的消息"
+          rows="4"
+          placeholder="例如：科技公司财报、世界杯赛事、宏观经济政策"
           :disabled="isSending"
         ></textarea>
 
-        <template v-if="mode === 'text'">
-          <label class="chat-form__label" for="image-upload">上传图像（可选）</label>
-          <input
-            :key="fileInputKey"
-            id="image-upload"
-            class="chat-form__file"
-            type="file"
-            accept="image/*"
-            @change="handleFileChange"
-            :disabled="isSending"
-          />
-        </template>
-
         <div class="chat-form__actions">
           <button class="chat-form__submit" type="submit" :disabled="isSending">
-            {{ isSending ? '请稍等…' : '发送' }}
+            {{ isSending ? '查询中…' : '开始查询' }}
           </button>
         </div>
       </form>
 
       <p v-if="errorMessage" class="feedback feedback--error">{{ errorMessage }}</p>
-      <p v-else-if="isSending" class="feedback feedback--status">请稍等…</p>
+      <p v-else-if="isSending" class="feedback feedback--status">查询中…</p>
 
       <section v-if="responsePayload" class="response-panel">
-        <h2>后端响应</h2>
-        <img v-if="imagePreview" class="response-panel__image" :src="imagePreview" alt="AI 生成图像预览" />
-        <p v-if="formattedResponse" class="response-panel__text">{{ formattedResponse }}</p>
+        <h2>查询结果</h2>
+        <p v-if="newsSummary" class="response-panel__summary">{{ newsSummary }}</p>
+        <ol v-if="newsArticles.length" class="news-results">
+          <li v-for="article in newsArticles" :key="article.id" class="news-results__item">
+            <h3 class="news-results__title">
+              <a
+                v-if="article.url"
+                :href="article.url"
+                class="news-results__link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ article.title }}
+              </a>
+              <span v-else>{{ article.title }}</span>
+            </h3>
+            <p v-if="article.description" class="news-results__description">{{ article.description }}</p>
+            <p class="news-results__meta">
+              <span v-if="article.source">来源：{{ article.source }}</span>
+              <span v-if="article.publishedAt">时间：{{ formatNewsDate(article.publishedAt) }}</span>
+            </p>
+          </li>
+        </ol>
+        <p v-else-if="formattedResponse" class="response-panel__text">{{ formattedResponse }}</p>
         <details v-if="debugPayload" class="response-panel__debug">
           <summary>调试信息</summary>
           <pre>{{ debugPayload }}</pre>
@@ -302,6 +380,37 @@ async function handleSubmit() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.chat-form__mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.chat-form__radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.chat-form__radio input {
+  accent-color: #6366f1;
+}
+
+.chat-form__radio--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chat-form__radio--disabled input {
+  cursor: not-allowed;
 }
 
 .chat-form__label {
@@ -377,10 +486,62 @@ async function handleSubmit() {
   gap: 0.75rem;
 }
 
+.response-panel__summary {
+  margin: 0;
+  font-weight: 600;
+  color: #1f2937;
+}
+
 .response-panel__text {
   white-space: pre-wrap;
   line-height: 1.6;
   color: #1f2937;
+}
+
+.news-results {
+  list-style: decimal inside;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.news-results__item {
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.news-results__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+.news-results__link {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.news-results__link:hover {
+  text-decoration: underline;
+}
+
+.news-results__description {
+  margin: 0 0 0.5rem;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.news-results__meta {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .response-panel__debug {
@@ -409,11 +570,3 @@ async function handleSubmit() {
   }
 }
 </style>
-
-.chat-form__radio--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.chat-form__radio--disabled input {
-  cursor: not-allowed;
-}
