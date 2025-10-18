@@ -1,18 +1,38 @@
 const { URLSearchParams } = require('node:url');
 
-const NEWS_API_ENDPOINT = 'https://newsapi.org/v2/everything';
+const RAPID_API_ENDPOINT = 'https://real-time-news-data.p.rapidapi.com/search';
 
 function normaliseArticle(article) {
-  const title = article?.title?.trim() || '未命名新闻';
-  const description = article?.description?.trim() || '';
-  const url = article?.url?.trim() || '';
-  const source = article?.source?.name?.trim() || '';
-  const publishedAt = article?.publishedAt || '';
+  const title = article?.title?.trim() || article?.heading?.trim() || article?.name?.trim() || '未命名新闻';
+  const description =
+    article?.snippet?.trim() ||
+    article?.summary?.trim() ||
+    article?.description?.trim() ||
+    '';
+  const url = article?.url?.trim() || article?.link?.trim() || article?.article_url?.trim() || '';
+
+  let source = '';
+  if (typeof article?.source === 'string') {
+    source = article.source.trim();
+  } else if (article?.source?.title) {
+    source = String(article.source.title).trim();
+  } else if (article?.rights) {
+    source = String(article.rights).trim();
+  } else if (article?.author) {
+    source = String(article.author).trim();
+  }
+
+  const publishedAt =
+    article?.published_at ||
+    article?.publishedAt ||
+    article?.pubDate ||
+    article?.date ||
+    '';
 
   return { title, description, url, source, publishedAt };
 }
 
-async function searchNews({ query, apiKey, pageSize = 5, language = 'zh', sortBy = 'publishedAt' }) {
+async function searchNews({ query, apiKey, apiHost, pageSize = 5, language = 'zh' }) {
   if (!query || !query.trim()) {
     const error = new Error('新闻检索需要提供查询关键词。');
     error.status = 400;
@@ -20,7 +40,13 @@ async function searchNews({ query, apiKey, pageSize = 5, language = 'zh', sortBy
   }
 
   if (!apiKey) {
-    const error = new Error('服务器缺少新闻数据源的访问密钥。');
+    const error = new Error('服务器缺少 RapidAPI 访问密钥。');
+    error.status = 500;
+    throw error;
+  }
+
+  if (!apiHost) {
+    const error = new Error('服务器缺少 RapidAPI Host 配置。');
     error.status = 500;
     throw error;
   }
@@ -32,16 +58,18 @@ async function searchNews({ query, apiKey, pageSize = 5, language = 'zh', sortBy
   }
 
   const params = new URLSearchParams({
-    q: query,
-    apiKey,
+    query,
     language,
-    sortBy,
-    pageSize: String(pageSize),
+    limit: String(pageSize),
   });
 
-  const requestUrl = `${NEWS_API_ENDPOINT}?${params.toString()}`;
+  const requestUrl = `${RAPID_API_ENDPOINT}?${params.toString()}`;
   const response = await fetch(requestUrl, {
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'X-RapidAPI-Key': apiKey,
+      'X-RapidAPI-Host': apiHost,
+    },
   });
 
   if (!response.ok) {
@@ -50,6 +78,11 @@ async function searchNews({ query, apiKey, pageSize = 5, language = 'zh', sortBy
       const payload = await response.json();
       if (payload?.message) {
         errorMessage = `新闻服务请求失败：${payload.message}`;
+      } else if (payload?.error) {
+        const rapidError = typeof payload.error === 'string' ? payload.error : payload.error?.message;
+        if (rapidError) {
+          errorMessage = `新闻服务请求失败：${rapidError}`;
+        }
       }
     } catch (parseError) {
       // ignore JSON parse error, retain status-based message
@@ -61,14 +94,25 @@ async function searchNews({ query, apiKey, pageSize = 5, language = 'zh', sortBy
   }
 
   const payload = await response.json();
-  const articles = Array.isArray(payload?.articles) ? payload.articles.map(normaliseArticle) : [];
-  const totalResults = Number.isInteger(payload?.totalResults) ? payload.totalResults : articles.length;
+  const rawArticles = Array.isArray(payload?.data)
+    ? payload.data
+    : Array.isArray(payload?.articles)
+    ? payload.articles
+    : [];
+  const articles = rawArticles.map(normaliseArticle);
+  const totalResults = Number.isInteger(payload?.total)
+    ? payload.total
+    : Number.isInteger(payload?.totalResults)
+    ? payload.totalResults
+    : Number.isInteger(payload?.meta?.found)
+    ? payload.meta.found
+    : articles.length;
 
   return {
     query,
     totalResults,
     articles,
-    source: 'newsapi.org',
+    source: 'rapidapi.com',
   };
 }
 

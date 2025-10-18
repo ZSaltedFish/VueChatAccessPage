@@ -29,7 +29,7 @@ npm run dev
 ### 主要功能
 
 * 暴露 `POST /api/message` 接口，基于 `mode` 字段动态调用不同的能力：
-  * `news`：查询 `newsapi.org`，并返回最多 6 条与关键词相关的新闻结果。
+  * `news`：通过 RapidAPI 调用 `real-time-news-data` 服务，并返回最多 6 条与关键词相关的新闻结果。
   * `text`：转发到 OpenAI Responses API，进行富文本生成（当前前端已关闭该模式）。
   * `image`：调用 OpenAI 的图片生成功能（当前前端已关闭该模式）。
 * 基于内存存储的上传处理，仅在需要时将图片转换为 base64 后嵌入请求。
@@ -53,7 +53,8 @@ npm run dev
 ```env
 OPENAI_API_KEY=sk-xxx                 # 可选，启用文本/图片生成功能所需的 OpenAI API Key
 OPENAI_MODEL=gpt-4.1-mini             # 可选，默认值见示例
-NEWS_API_KEY=news-api-key             # 必填，NewsAPI.org 的访问密钥
+RAPIDAPI_KEY=rapidapi-key             # 必填，RapidAPI Real-Time News Data 服务的访问密钥
+RAPIDAPI_HOST=real-time-news-data.p.rapidapi.com  # 可选，默认即可
 PORT=3000                             # 可选，服务监听端口
 ```
 
